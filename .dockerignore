@@ -1,0 +1,8 @@
+.env
+keys.txt
+venv/
+__pycache__/
+*.pyc
+server*.log
+*.png
+.git

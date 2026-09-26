@@ -1,0 +1,12 @@
+# Files NOT uploaded to Cloud Build by `gcloud run deploy --source .`
+# Keys are passed to Cloud Run as environment variables instead.
+.gcloudignore
+.git
+.gitignore
+.env
+keys.txt
+venv/
+__pycache__/
+*.pyc
+server*.log
+*.png

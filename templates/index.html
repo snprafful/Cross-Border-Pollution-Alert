@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Border Pollution Alert — Delhi-NCR Corridor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #131722;
+    --border: #232838;
+    --text: #e6e8ee;
+    --muted: #8b92a8;
+    --accent: #ff6b4a;
+    --good: #4ade80;
+    --mod: #facc15;
+    --poor: #fb923c;
+    --severe: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header p { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  #map { flex: 1; }
+  #sidebar {
+    width: 360px;
+    max-width: 40vw;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .advisory-box {
+    background: #1a1f2e;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+  }
+  .advisory-box.loading { color: var(--muted); font-style: italic; }
+  .advisory-box.fallback { border-left-color: var(--mod); }
+  .fallback-warning {
+    font-size: 12px;
+    color: var(--mod);
+    margin: -12px 0 20px;
+  }
+  .city-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .city-row:last-child { border-bottom: none; }
+  .city-name { font-weight: 500; }
+  .city-state { color: var(--muted); font-size: 11px; }
+  .aqi-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #0b0e14;
+  }
+  .aqi-cell { display: flex; align-items: center; gap: 6px; }
+  .sample-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px dashed var(--mod);
+    color: var(--mod);
+  }
+  .sample-explainer {
+    font-size: 11px;
+    color: var(--mod);
+    margin: 8px 0 0;
+  }
+  .source-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .legend {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🌫 Cross-Border Pollution Alert — Delhi-NCR Corridor</h1>
+    <p>Tracking upwind agricultural burning (Punjab/Haryana) against downwind NCR air quality, powered by Gemini</p>
+  </div>
+  <div class="status-badge" id="statusBadge">Loading live data…</div>
+</header>
+<main>
+  <div id="map"></div>
+  <div id="sidebar">
+    <p class="section-title" id="advisoryTitle">AI Advisory (Gemini)</p>
+    <div class="advisory-box loading" id="advisoryBox">Analyzing cross-city AQI and fire data…</div>
+    <p class="fallback-warning" id="fallbackWarning" hidden></p>
+
+    <p class="section-title" id="cityListTitle">City AQI</p>
+    <div id="cityList"></div>
+    <p class="sample-explainer" id="sampleExplainer" hidden>
+      SAMPLE = estimated value, not a live CPCB reading. Live station data is
+      used automatically when a data.gov.in key is configured.
+    </p>
+
+    <div class="legend">
+      <span><i class="dot" style="background:#4ade80"></i> Good (0-100)</span>
+      <span><i class="dot" style="background:#facc15"></i> Moderate (101-200)</span>
+      <span><i class="dot" style="background:#fb923c"></i> Poor (201-300)</span>
+      <span><i class="dot" style="background:#ef4444"></i> Severe (300+)</span>
+    </div>
+
+    <div class="source-note" id="sourceNote"></div>
+  </div>
+</main>
+
+<script>
+const map = L.map('map', { zoomControl: true }).setView([29.3, 76.8], 8);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+function aqiColor(aqi) {
+  if (aqi <= 100) return '#4ade80';
+  if (aqi <= 200) return '#facc15';
+  if (aqi <= 300) return '#fb923c';
+  return '#ef4444';
+}
+
+async function loadCities() {
+  const res = await fetch('/api/aqi');
+  const cities = await res.json();
+  const list = document.getElementById('cityList');
+  list.innerHTML = '';
+
+  cities.forEach(c => {
+    const color = aqiColor(c.aqi);
+    const isLive = c.source === 'cpcb_live';
+    L.circleMarker([c.lat, c.lon], {
+      radius: 10 + (c.aqi / 40),
+      fillColor: color,
+      color: '#fff',
+      weight: 1,
+      fillOpacity: 0.75
+    }).addTo(map).bindPopup(
+      `<b>${c.name}</b> (${c.state})<br>AQI: ${c.aqi} ` +
+      (isLive ? `(live CPCB, ${c.station_count} stations)` : '(sample/estimated — not live)')
+    );
+
+    const row = document.createElement('div');
+    row.className = 'city-row';
+    row.innerHTML = `
+      <div>
+        <div class="city-name">${c.name}</div>
+        <div class="city-state">${c.state}</div>
+      </div>
+      <div class="aqi-cell">
+        ${isLive ? '' : '<span class="sample-tag" title="Estimated value, not a live CPCB reading">Sample</span>'}
+        <div class="aqi-pill" style="background:${color}">${c.aqi}</div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  const allLive = cities.every(c => c.source === 'cpcb_live');
+  const anyLive = cities.some(c => c.source === 'cpcb_live');
+  document.getElementById('cityListTitle').textContent =
+    allLive ? 'City AQI — Live (CPCB)' : anyLive ? 'City AQI — Partly sample data' : 'City AQI — Sample data';
+  document.getElementById('sampleExplainer').hidden = allLive;
+
+  return cities;
+}
+
+async function loadFires() {
+  const res = await fetch('/api/fires');
+  const data = await res.json();
+  data.points.forEach(f => {
+    L.circleMarker([f.lat, f.lon], {
+      radius: 2.5,
+      fillColor: '#ff4444',
+      color: '#ff4444',
+      weight: 0,
+      fillOpacity: 0.6
+    }).addTo(map);
+  });
+  return data;
+}
+
+async function loadAdvisory() {
+  const res = await fetch('/api/advisory');
+  const data = await res.json();
+  const box = document.getElementById('advisoryBox');
+  box.classList.remove('loading');
+  box.textContent = data.advisory.text;
+
+  if (data.advisory.source === 'gemini_live') {
+    document.getElementById('advisoryTitle').textContent = `AI Advisory (${data.advisory.model})`;
+  } else {
+    document.getElementById('advisoryTitle').textContent = 'Advisory (template — Gemini not used)';
+    box.classList.add('fallback');
+    const warn = document.getElementById('fallbackWarning');
+    warn.textContent = `⚠ ${data.advisory.fallback_reason}`;
+    warn.hidden = false;
+  }
+
+  document.getElementById('sourceNote').textContent =
+    `Advisory: ${data.advisory.source} · Generated ${new Date(data.generated_at).toLocaleTimeString()} · ` +
+    `${data.cities_tracked} cities tracked · ${data.fires_detected} active fires detected`;
+}
+
+async function init() {
+  const [cities, fires] = await Promise.all([loadCities(), loadFires()]);
+  const aqiLabel = cities.every(c => c.source === 'cpcb_live') ? 'live CPCB'
+    : cities.some(c => c.source === 'cpcb_live') ? 'partly sample' : 'sample data';
+  const fireLabel = fires.source === 'nasa_firms_live' ? 'live NASA FIRMS' : 'sample data';
+  document.getElementById('statusBadge').textContent =
+    `${cities.length} cities (AQI: ${aqiLabel}) · ${fires.count} fire detections (${fireLabel})`;
+  await loadAdvisory();
+}
+
+init();
+</script>
+</body>
+</html>
