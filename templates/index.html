@@ -174,10 +174,30 @@
 
 <script>
 const map = L.map('map', { zoomControl: true }).setView([29.3, 76.8], 8);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO',
-  maxZoom: 19
+// Esri World Dark Gray: dark basemap that needs no API key. Labels are a
+// separate transparent layer drawn on top.
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas';
+const esriAttribution = 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors';
+const darkBase = L.tileLayer(`${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
+  attribution: esriAttribution,
+  maxZoom: 16
 }).addTo(map);
+const darkLabels = L.tileLayer(`${ESRI}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, {
+  maxZoom: 16
+}).addTo(map);
+
+// If Esri tiles keep failing, switch to OpenStreetMap (light theme, no key)
+// rather than leave the map blank.
+let tileErrors = 0;
+darkBase.on('tileerror', () => {
+  if (++tileErrors !== 5) return;
+  map.removeLayer(darkBase);
+  map.removeLayer(darkLabels);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+});
 
 function aqiColor(aqi) {
   if (aqi <= 100) return '#4ade80';
