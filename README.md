@@ -43,7 +43,7 @@ and there's no single view connecting the two.
 |---|---|
 | NASA FIRMS fire detections | Live |
 | Gemini advisory | Live |
-| CPCB city AQI | **Sample data.** data.gov.in API key registration wasn't working during the hackathon. The live integration is implemented and switches on automatically when `DATA_GOV_IN_KEY` is set. |
+| CPCB city AQI | **Sample data.** data.gov.in API key registration wasn't working while the project was being built. The live integration is implemented and switches on automatically when `DATA_GOV_IN_KEY` is set. |
 
 Sample values are marked with a **SAMPLE** tag in the UI, and Gemini is told
 which inputs are sample data so it caveats its advisory accordingly. It's also
@@ -105,7 +105,7 @@ idle.
 | Tool | Used for |
 |---|---|
 | Python + Flask | Backend and JSON API |
-| Leaflet.js | Interactive map (free, no API key needed) |
+| Leaflet.js + Esri World Dark Gray tiles | Interactive map; no API key required, with an automatic OpenStreetMap fallback if Esri tiles fail |
 | Google Gemini (`google-genai` SDK) | Advisory generation |
 | gunicorn | Production web server |
 | Docker + Google Cloud Run | Deployment (serverless, Mumbai region) |
