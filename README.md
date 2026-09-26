@@ -78,8 +78,9 @@ Notes:
 
 ## How it scales
 
-Nothing in the pipeline is specific to Delhi. A region is defined by two
-settings at the top of `app.py`:
+The pipeline's logic isn't specific to Delhi. A region is defined mainly by
+two settings at the top of `app.py` (the region names in the Gemini prompt
+would also be updated to match):
 
 ```python
 CITIES = [...]                            # downwind cities to monitor
@@ -99,6 +100,14 @@ changing the city list and bounding box. Examples:
 
 Each corridor can run as its own Cloud Run service, which scales to zero when
 idle.
+
+Because NASA FIRMS is a global satellite dataset, the architecture isn't
+limited to India either. Its only country-specific data dependency is the
+ground-station AQI source (plus the region names in the Gemini prompt), so
+the same design extends to any country with a public air-quality monitoring
+API — including other BRICS nations facing similar cross-border pollution
+dynamics. This is an architectural note only; no deployment outside India has
+been built or tested.
 
 ## Tech stack
 
