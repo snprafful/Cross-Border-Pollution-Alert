@@ -1,14 +1,20 @@
-# Cross-Border Pollution Alert — Delhi-NCR Corridor
+# Cross-Border Pollution Alert
 
 **Live demo:** https://pollution-alert-362757633662.asia-south1.run.app
 
 Built for Hack2skill's Code for Communities 2 hackathon, Track 2: Clean Air
 and Climate Resilience.
 
-A web dashboard that combines air-quality readings from NCR cities with
-satellite fire detections from upwind states, and uses Gemini to generate an
-advisory for officials: which city is at highest risk and what cross-state
-action to take.
+A web dashboard that combines city air-quality readings with satellite fire
+detections from upwind regions, and uses Gemini to generate an advisory for
+officials: which city is at highest risk and what cross-state action to take.
+
+**Scope:** The current implementation monitors the **Delhi-NCR corridor**
+(6 cities across Delhi, Haryana and Uttar Pradesh) as a working example. The
+broader goal is a general model: given any city's AQI, estimate how that
+pollution spreads to and affects surrounding cities, for any city pair in
+India — see [Proposed dispersion model](#proposed-dispersion-model-not-yet-built)
+(not yet built).
 
 ## The problem
 
@@ -170,6 +176,62 @@ Dockerfile             Container setup for Cloud Run
   CPCB data is available to test against.
 - No wind or weather data yet. Adding forecasts (IMD or Open-Meteo) would
   show which fires are actually upwind of each city and allow spike
-  forecasting.
+  forecasting — see the proposed dispersion model below.
 - Planned: citizen photo reports classified by Gemini, automated alerts to
   state pollution control boards, and advisories in regional languages.
+
+### Proposed dispersion model (not yet built)
+
+> **Status: proposal only.** Nothing in this section is implemented yet.
+
+The current app shows AQI and fire data side by side. The next step is a
+quantitative estimate of how much one city's pollution affects another. The
+proposed approach is a simplified wind-weighted exponential decay model, a
+computationally light stand-in for full Gaussian plume dispersion:
+
+```
+Impact(B | A) = AQI(A) × Alignment(A→B, wind) × Decay(distance(A, B))
+```
+
+**Alignment** — how directly city B lies downwind of city A:
+
+```
+Alignment(A→B, wind) = max(0, cos θ)^n
+```
+
+- θ = angle between the direction the wind is blowing *toward* and the
+  compass bearing from A to B. Weather APIs report wind direction as where
+  the wind comes *from* (a 315° north-westerly wind carries pollution toward
+  135°), so the "toward" direction is the reported direction + 180°.
+- n = sharpness exponent (e.g. n = 2). Cities roughly downwind get high
+  weight, cities directly downwind get the maximum, and cities crosswind or
+  upwind get zero.
+
+**Decay** — how pollution thins out with distance:
+
+```
+Decay(d) = exp(−d / L)
+```
+
+- d = great-circle distance between A and B, via the haversine formula
+  (computable from the latitude/longitude already in the codebase).
+- L = characteristic decay length in km, to be calibrated against known real
+  events — e.g. how far Punjab stubble-burning smoke has historically
+  correlated with AQI spikes in Delhi, Haryana and western UP. A natural
+  extension is to scale L with wind speed, since faster winds carry
+  pollution further.
+
+**Data needed** (all free, none integrated yet):
+
+- Wind speed and direction: [Open-Meteo](https://open-meteo.com/) API (no
+  key required)
+- Distance and bearing between any two cities: haversine formula (pure math,
+  no external dependency)
+
+**Limitations:** This is a simplified proxy, **not** a full atmospheric
+transport model. A rigorous Gaussian plume model would also need emission
+rates and atmospheric stability class data, which can't be derived from AQI
+or fire-detection data alone. This model is meant to give a directionally
+correct, calibratable estimate of *relative* impact — good enough to rank
+which neighbouring cities are most at risk from a given source — not a
+certified air-quality forecast.
