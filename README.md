@@ -2,9 +2,6 @@
 
 **Live demo:** https://pollution-alert-362757633662.asia-south1.run.app
 
-Built for Hack2skill's Code for Communities 2 hackathon, Track 2: Clean Air
-and Climate Resilience.
-
 A web dashboard that combines city air-quality readings with satellite fire
 detections from upwind regions, and uses Gemini to generate an advisory for
 officials: which city is at highest risk and what cross-state action to take.
